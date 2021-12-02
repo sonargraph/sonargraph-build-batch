@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<ns2:softwareSystem xmlns:ns2="http://www.hello2morrow.com/sonargraph/core" id="f12779963e1579c6854cb7cf0655765b" version="12.0.0.100">
+	<description></description>
+	<module xmlns:ns4="http://www.hello2morrow.com/sonargraph/languageprovider/java" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns4:xsdJavaModule" name="sonargraph-build-batch" id="9b714cfe5a17b13b2f7632c323f80096" language="Java">
+		<description>Code to execute Sonargraph-Build for advanced analysis</description>
+		<rootPath xsi:type="ns4:xsdSourceRootPath" name="./src/main/java"></rootPath>
+		<rootPath name="./target/classes"></rootPath>
+		<rootPath xsi:type="ns4:xsdSourceRootPath" name="./src/test/java"></rootPath>
+		<rootPath name="./target/test-classes"></rootPath>
+	</module>
+</ns2:softwareSystem>
