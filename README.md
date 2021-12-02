@@ -50,3 +50,7 @@ metrics for code involved in cycles.
 ![Trend of CWA-Server](/doc/CWA-Server_Entanglement.png "Trend of CWA-Server")
 
 ![Trend of Biggest Component Cycle in CWA-Server](/doc/CWA-Server_Biggest-Component-Cycle.png "Trend of Biggest Component Cycle in CWA-Server")
+
+Both analysis back-up our experience that if you don't monitor the system's structure and actively fight against the entropy, the problem will get more severe over time.
+The end result is a ["Big Ball of Mud" ](http://www.laputan.org/mud/).
+You can keep the system structure in a healthy state, if you constantly monitor and eliminate cycles when they are still small!
