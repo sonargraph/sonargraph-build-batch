@@ -9,14 +9,16 @@ Of course, this analysis could also be implemented as a batch script. But debugg
 programming language...
 
 There are currently two analysis implemented:
-1. Class com.hello2morrow.sonargraph.batch.analysis.CwaServerAnalysis demonstrates how tagged commits are retrieved from a 
-Git repo, individual commits are checked out, built with Maven and analyzed with Sonargraph.
-2. If building past releases is too complicated and time consuming the class com.hello2morrow.sonargraph.batch.analysis.HibernateCoreAnalysis demonstrates 
-how the available releases are retrieved from a Maven repository, the jar and sources-jar are downloaded via a Maven build, 
+1. Class [com.hello2morrow.sonargraph.batch.analysis.CwaServerAnalysis](/src/main/java/com/hello2morrow/sonargraph/batch/analysis/CwaServerAnalysis.java) 
+demonstrates how tagged commits are retrieved from a Git repo, individual commits are checked out, built with Maven and analyzed with Sonargraph.
+2. If building past releases is too complicated and time consuming the class 
+[com.hello2morrow.sonargraph.batch.analysis.HibernateCoreAnalysis](/src/main/java/com/hello2morrow/sonargraph/batch/analysis/HibernateCoreAnalysis.java) 
+demonstrates how the available releases are retrieved from a Maven repository, the jar and sources-jar are downloaded via a Maven build, 
 retrieved from the local Maven repo and used in a Sonargraph software system which is then analyzed using Sonargraph-Build.
 
-Configuration is done via properties files contained in src/main/resources.
-Executing commands is currently only implemented for Windows (see com/hello2morrow/sonargraph/batch/shell/WindowsShell.java) 
+Configuration is done via properties files contained in [src/main/resources](/src/main/resources).
+Executing commands is currently only implemented for Windows 
+(see [com/hello2morrow/sonargraph/batch/shell/WindowsShell.java](/src/main/java/com/hello2morrow/sonargraph/batch/shell/WindowsShell.java)) 
 but it should be easy to add support for Unix-based operating systems.
 
 If you want to run one of the existing analysis or create your own, you need a license for Sonargraph-Build.
@@ -28,7 +30,7 @@ Further information about Sonargraph:
 * [Sonargraph-Build User Manual](http://eclipse.hello2morrow.com/doc/build/content/index.html)
 
 ## Some Sample Results
-The analysis of a series of versions has been implemented to analyze how coupling and cyclic dependencies evolve over time together
+The analysis of a series of versions has been implemented to investigate how coupling and cyclic dependencies evolve over time together
 with the size of the projects. The following are a screenshots of Sonargraph-Enterprise which has been configured to show metrics for the system's size 
 and coupling. 
 
@@ -53,4 +55,5 @@ metrics for code involved in cycles.
 
 Both analysis back-up our experience that if you don't monitor the system's structure and actively fight against the entropy, the problem will get more severe over time.
 The end result is a ["Big Ball of Mud" ](http://www.laputan.org/mud/).
+
 The best way to keep the system structure in a healthy state, is to constantly monitor and eliminate cycles when they are still small!
