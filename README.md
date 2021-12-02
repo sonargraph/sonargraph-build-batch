@@ -25,3 +25,25 @@ Further information about Sonargraph:
 * [Homepage](https://www.hello2morrow.com/)
 * [Sonargraph User Manual](https://eclipse.hello2morrow.com/doc/standalone/content/index.html)
 * [Sonargraph-Build User Manual](http://eclipse.hello2morrow.com/doc/build/content/index.html)
+
+## Some Sample Results
+The analysis of several versions has been implemented to demonstrate how coupling and cyclic dependencies grow over time together
+with the size of the projects. The following are a screenshots of Sonargraph-Enterprise which has been configured to show metrics for the system's size 
+and coupling. 
+
+The state of Hibernate-Core ([Hibernate-Core](https://github.com/hibernate/hibernate-orm/tree/main/hibernate-core)) is pretty severe:
+* 89% of all lines of code are contained in files involved in cycle groups.
+* The biggest component cycle group contains 2,211 out of 3,538 source files, the biggest package cycle group contains 
+  264 of 283 packages.
+* Average Component Dependency is ~2188, meaning the on average a source file depends on 2187 other source files.
+  
+![Trend of Hibernate-Core](/doc/Hibernate-Core_Entanglement.png "Trend of Hibernate-Core")
+![Trend of Biggest Component Cycle in Hiberante-Core](/doc/Hibernate-Core_Biggest-Component-Cycle.png "Trend of Biggest Component Cycle in Hibernate-Core")
+
+
+The state of CWA-Server ([CWA-Server](https://github.com/corona-warn-app/cwa-server)) is better, but also shows growing 
+metrics for code involved in cycles.
+* 39% of all lines of code are contained in files involved in cycle groups. 
+* Cycle groups are not yet huge, but constantly growing.
+![Trend of CWA-Server](/doc/CWA-Server_Entanglement.png "Trend of CWA-Server")
+![Trend of Biggest Component Cycle in CWA-Server](/doc/CWA-Server_Biggest-Component-Cycle.png "Trend of Biggest Component Cycle in CWA-Server")
