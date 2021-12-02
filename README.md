@@ -53,4 +53,4 @@ metrics for code involved in cycles.
 
 Both analysis back-up our experience that if you don't monitor the system's structure and actively fight against the entropy, the problem will get more severe over time.
 The end result is a ["Big Ball of Mud" ](http://www.laputan.org/mud/).
-You can keep the system structure in a healthy state, if you constantly monitor and eliminate cycles when they are still small!
+The best way to keep the system structure in a healthy state, is to constantly monitor and eliminate cycles when they are still small!
