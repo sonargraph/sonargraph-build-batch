@@ -1,7 +1,5 @@
 # sonargraph-build-batch
-Code to execute Sonargraph-Build for advanced analysis
-
-This code demonstrates how Sonargraph-Build can be executed for a series of different versions of a system.
+This code demonstrates how Sonargraph-Build, the headless version of [Sonargraph](https://www.hello2morrow.com/) can be executed for a series of different versions of a system.
 The generated XML reports and snapshots are persisted to disk and uploaded to an instance of Sonargraph-Enterprise, where graphs
 are displayed for metrics.
 
@@ -32,13 +30,13 @@ Further information about Sonargraph:
 ## Some Sample Results
 The analysis of a series of versions has been implemented to investigate how coupling and cyclic dependencies evolve over time together
 with the size of the projects. The following are a screenshots of Sonargraph-Enterprise which has been configured to show metrics for the system's size 
-and coupling. 
+and coupling. (Of course, all other System-level metrics computed by Sonargraph are also available and could be investigated.)
 
 The state of Hibernate-Core ([Hibernate-Core](https://github.com/hibernate/hibernate-orm/tree/main/hibernate-core)) is pretty severe:
 * 89% of all lines of code are contained in files involved in cycle groups.
 * The biggest component cycle group contains 2,211 out of 3,538 source files, the biggest package cycle group contains 
   264 of 283 packages.
-* Average Component Dependency is ~2188, meaning the on average a source file depends on 2187 other source files.
+* Average Component Dependency is ~2188, meaning that on average a source file depends on 2187 other source files.
   
 ![Trend of Hibernate-Core](/doc/Hibernate-Core_Entanglement.png "Trend of Hibernate-Core")
 
