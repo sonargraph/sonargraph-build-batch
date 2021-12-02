@@ -1,7 +1,7 @@
 # sonargraph-build-batch
-This code demonstrates how Sonargraph-Build, the headless version of [Sonargraph](https://www.hello2morrow.com/) can be executed for a series of different versions of a system.
-The generated XML reports and snapshots are persisted to disk and uploaded to an instance of Sonargraph-Enterprise, where graphs
-are displayed for metrics.
+This code demonstrates how Sonargraph-Build, the headless version of [Sonargraph](https://www.hello2morrow.com/), can be executed for a series of different versions of a system.
+The generated XML reports and snapshots are persisted to disk and uploaded to an instance of [Sonargraph-Enterprise](https://www.hello2morrow.com/products/sonargraph/enterprise), 
+a repository of analysis results, where metric trends are displayed as graphs.
 
 Of course, this analysis could also be implemented as a batch script. But debugging and error handling is so much easier using a proper
 programming language...
@@ -21,6 +21,12 @@ but it should be easy to add support for Unix-based operating systems.
 
 If you want to run one of the existing analysis or create your own, you need a license for Sonargraph-Build.
 An evaluation license can be requested at [https://www.hello2morrow.com/try_it](https://www.hello2morrow.com/try_it).
+
+DISCLAMER: This is not a product! 
+Therefore, it is not guaranteed that you only need to adapt the configuration properties and the analysis runs flawlessly on your machine.
+Take a look at the code, copy what makes sense to you and extend it where needed. 
+Run the analysis in debug mode and step through the analysis of the initial versions.
+It might be necessary to curate the list of versions to omit overlaps, etc and then re-run the analysis.  
 
 Further information about Sonargraph:
 * [Homepage](https://www.hello2morrow.com/)
