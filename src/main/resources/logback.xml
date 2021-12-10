@@ -1,7 +1,7 @@
 <configuration debug="false" scan="false">
 	<appender name="FILE_DEFAULT"
 		class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>sonargraph_access.log</file>
+		<file>sonargraph_batch.log</file>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
 			<pattern>%date %level [%thread{20}] %logger %msg%n</pattern>
 		</encoder>
