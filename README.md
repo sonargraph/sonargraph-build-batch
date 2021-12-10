@@ -10,13 +10,13 @@ There are currently two analysis implemented:
 1. Class [com.hello2morrow.sonargraph.batch.analysis.CwaServerAnalysis](/src/main/java/com/hello2morrow/sonargraph/batch/analysis/CwaServerAnalysis.java) 
 demonstrates how tagged commits are retrieved from a Git repo, individual commits are checked out, built with Maven and analyzed with Sonargraph.
 2. If building past releases is too complicated and time consuming the class 
-[com.hello2morrow.sonargraph.batch.analysis.RunAnalysisForMavenBundle](/src/main/java/com/hello2morrow/sonargraph/batch/analysis/RunAnalysisForMavenBundle.java) 
+[com.hello2morrow.sonargraph.batch.analysis.AnalyzeMavenArtifact](/src/main/java/com/hello2morrow/sonargraph/batch/analysis/AnalyzeMavenArtifact.java) 
 demonstrates how the available releases are retrieved from a Maven repository, the jar and sources-jar are downloaded, and used in a Sonargraph software system 
 which is then analyzed using Sonargraph-Build.
 
 If you want to run the analysis for a Maven module available on Maven Central, these are the necessary command-line arguments:
 ```
-RunAnalysisForMavenBundle org.hibernate hibernate-core ./src/main/resources/maven-central.properties writeVersionsFile
+AnalyzeMavenArtifact org.hibernate hibernate-core ./src/main/resources/maven-central.properties writeVersionsFile
 ```
 
 Additional configuration is done via properties files contained in [src/main/resources](/src/main/resources).

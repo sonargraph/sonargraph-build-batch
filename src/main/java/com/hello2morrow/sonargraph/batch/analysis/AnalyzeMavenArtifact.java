@@ -48,12 +48,12 @@ import com.hello2morrow.sonargraph.batch.shell.IShell;
 import com.hello2morrow.sonargraph.batch.shell.ShellFactory;
 
 /**
- * This class executes the analysis for a Maven bundle. Ideally, also a *-sources.jar exists.
+ * This class executes the analysis for a Maven artifact.
  *
- * The available releases are queried from Maven repo, and a small dummy project is used to download the JAR and sources-JAR. These JARs are analyzed
- * by Sonargraph-Build and the resulting report and snapshot are uploaded to a local instance of Sonargraph-Enterprise.
+ * The available releases are queried from Maven repo, and classes and sources jars are downloaded. These JARs are analyzed by Sonargraph-Build and
+ * the resulting report and snapshot are uploaded to a local instance of Sonargraph-Enterprise.
  */
-public final class RunAnalysisForMavenBundle
+public final class AnalyzeMavenArtifact
 {
     private static final String VERSION_TIME_SEPARATOR = " -- ";
 
@@ -66,7 +66,7 @@ public final class RunAnalysisForMavenBundle
     private final Configuration m_configuration;
     private final boolean m_writeVersionsFile;
 
-    private RunAnalysisForMavenBundle(final String groupId, final String artifactId, final Configuration configuration,
+    private AnalyzeMavenArtifact(final String groupId, final String artifactId, final Configuration configuration,
             final boolean writeVersionsFile)
     {
         assert groupId != null && groupId.length() > 0 : "Parameter 'groupId' of method 'RunAnalysisForMavenBundle' must not be empty";
@@ -109,7 +109,7 @@ public final class RunAnalysisForMavenBundle
         final Configuration props = ConfigurationReader.read(propertyFileName);
         if (props != null)
         {
-            final RunAnalysisForMavenBundle execution = new RunAnalysisForMavenBundle(groupId, artifactId, props, writeVersionsFile);
+            final AnalyzeMavenArtifact execution = new AnalyzeMavenArtifact(groupId, artifactId, props, writeVersionsFile);
             try
             {
                 execution.run();
