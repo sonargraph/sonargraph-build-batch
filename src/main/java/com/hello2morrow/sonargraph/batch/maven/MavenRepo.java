@@ -23,6 +23,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -31,6 +32,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.hello2morrow.sonargraph.batch.configuration.Version;
 import com.hello2morrow.sonargraph.batch.shell.IShell;
 
 public class MavenRepo
@@ -47,14 +49,14 @@ public class MavenRepo
         assert url != null : "Parameter 'url' of method 'getVersions' must not be null";
         assert skipVersionParts != null : "Parameter 'skipVersionParts' of method 'getVersions' must not be null";
 
-        final List<String> lines = shell.execute("curl " + url, new File("."));
-        final List<Pair<String, Date>> versions = new ArrayList<>();
+        final List<String> lines = shell.execute("curl -L " + url, new File("."));
+        final List<Pair<Version, Date>> versions = new ArrayList<>();
         for (final String next : lines)
         {
             final String trimmed = next.trim();
             if (trimmed.startsWith("<a href=\""))
             {
-                final Pair<String, Date> versionAndDate = processVersionLine(trimmed, skipVersionParts);
+                final Pair<Version, Date> versionAndDate = processVersionLine(trimmed, skipVersionParts);
                 if (versionAndDate != null)
                 {
                     versions.add(versionAndDate);
@@ -63,11 +65,35 @@ public class MavenRepo
         }
 
         versions.sort((p1, p2) -> p1.getRight().compareTo(p2.getRight()));
-        return versions;
+
+        final List<Pair<String, Date>> stringVersions = new ArrayList<>();
+        Version previous = null;
+        for (final Iterator<Pair<Version, Date>> iter = versions.iterator(); iter.hasNext();)
+        {
+            final Pair<Version, Date> next = iter.next();
+            if (previous == null)
+            {
+                previous = next.getLeft();
+                continue;
+            }
+
+            if (previous.compareTo(next.getLeft()) > 0)
+            {
+                //previous was of higher version than next and needs to be discarded
+                iter.remove();
+            }
+            else
+            {
+                previous = next.getLeft();
+            }
+        }
+
+        versions.forEach(p -> stringVersions.add(new ImmutablePair<>(p.getLeft().toString(), p.getRight())));
+        return stringVersions;
     }
 
     //Package private to allow access in JUnit test
-    static Pair<String, Date> processVersionLine(final String line, final Set<String> skipVersionParts) throws ParseException
+    static Pair<Version, Date> processVersionLine(final String line, final Set<String> skipVersionParts) throws ParseException
     {
         assert line != null : "Parameter 'line' of method 'processVersionLine' must not be null";
         assert skipVersionParts != null : "Parameter 'skipVersionParts' of method 'processVersionLine' must not be null";
@@ -76,26 +102,27 @@ public class MavenRepo
         if (matcher.matches())
         {
             final String rawVersion = matcher.group(1);
-            final String version;
+            final String versionString;
             if (rawVersion.endsWith("/"))
             {
-                version = rawVersion.substring(0, rawVersion.length() - 1);
+                versionString = rawVersion.substring(0, rawVersion.length() - 1);
             }
             else
             {
-                version = rawVersion;
+                versionString = rawVersion;
             }
 
-            if (version.startsWith("maven-metadata.xml"))
+            if (versionString.startsWith("maven-metadata.xml"))
             {
                 return null;
             }
 
-            if (skipVersionParts.stream().anyMatch(skip -> version.contains(skip)))
+            if (skipVersionParts.stream().anyMatch(skip -> versionString.contains(skip)))
             {
                 return null;
             }
 
+            final Version version = Version.fromString(versionString);
             final String dateTime = matcher.group(2);
             final Date date = DATE_FORMAT.parse(dateTime);
             return new ImmutablePair<>(version, date);

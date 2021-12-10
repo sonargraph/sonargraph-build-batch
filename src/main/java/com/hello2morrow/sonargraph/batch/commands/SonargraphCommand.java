@@ -32,8 +32,8 @@ public final class SonargraphCommand
         super();
     }
 
-    public static String createReport(final IShell shell, final String commit, final Pair<String, String> timestamps, final String tag,
-            final File analysisDir, final String baselineReportPath, final Configuration configuration, final String configFile,
+    public static String createReport(final IShell shell, final String systemName, final String commit, final Pair<String, String> timestamps,
+            final String tag, final File analysisDir, final String baselineReportPath, final Configuration configuration, final String configFile,
             final String sonargraphSystemPath) throws Exception
     {
         assert shell != null : "Parameter 'shell' of method 'executeSonargraph' must not be null";
@@ -53,8 +53,6 @@ public final class SonargraphCommand
         final String instDirectory = configuration.getString(Props.INST_DIRECTORY.getPropertyName());
         final String buildClientJar = SonargraphInstallationUtility.getSonargraphBuildClientJar(new File(instDirectory)).getAbsolutePath();
         final String osgiJar = SonargraphInstallationUtility.getOsgiJar(new File(instDirectory)).getAbsolutePath();
-
-        final String systemName = configuration.getString(Props.NAME.getPropertyName());
 
         final String uploadHostUrl = configuration.getString(Props.UPLOAD_HOST_URL.getPropertyName());
         final String clientKey = configuration.getString(Props.CLIENT_KEY.getPropertyName());
