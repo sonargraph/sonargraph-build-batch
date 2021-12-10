@@ -19,6 +19,8 @@ package com.hello2morrow.sonargraph.batch.analysis;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,7 +40,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.hello2morrow.sonargraph.batch.commands.MavenCommands;
 import com.hello2morrow.sonargraph.batch.commands.SonargraphCommand;
 import com.hello2morrow.sonargraph.batch.configuration.ConfigurationReader;
 import com.hello2morrow.sonargraph.batch.configuration.Props;
@@ -47,37 +48,68 @@ import com.hello2morrow.sonargraph.batch.shell.IShell;
 import com.hello2morrow.sonargraph.batch.shell.ShellFactory;
 
 /**
- * This class executes the analysis for the Hibernate-Core module, which is part of the Hibernate project, available at
- * https://github.com/hibernate/hibernate-orm.
+ * This class executes the analysis for a Maven bundle. Ideally, also a *-sources.jar exists.
  *
  * The available releases are queried from Maven repo, and a small dummy project is used to download the JAR and sources-JAR. These JARs are analyzed
  * by Sonargraph-Build and the resulting report and snapshot are uploaded to a local instance of Sonargraph-Enterprise.
  */
-public final class HibernateCoreAnalysis
+public final class RunAnalysisForMavenBundle
 {
     private static final String VERSION_TIME_SEPARATOR = " -- ";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CwaServerAnalysis.class);
 
-    private final Configuration m_configuration;
     private final Charset m_charset;
 
-    private HibernateCoreAnalysis(final Configuration configuration)
+    private final String m_artifactId;
+    private final String m_groupId;
+    private final Configuration m_configuration;
+    private final boolean m_writeVersionsFile;
+
+    private RunAnalysisForMavenBundle(final String groupId, final String artifactId, final Configuration configuration,
+            final boolean writeVersionsFile)
     {
+        assert groupId != null && groupId.length() > 0 : "Parameter 'groupId' of method 'RunAnalysisForMavenBundle' must not be empty";
+        assert artifactId != null && artifactId.length() > 0 : "Parameter 'artifactId' of method 'RunAnalysisForMavenBundle' must not be empty";
         assert configuration != null : "Parameter 'configuration' of method 'Execution' must not be null";
 
+        m_groupId = groupId;
+        m_artifactId = artifactId;
         m_configuration = configuration;
+        m_writeVersionsFile = writeVersionsFile;
+
         final String charsetName = m_configuration.getString(Props.SHELL_CHARSET.getPropertyName());
         m_charset = charsetName == null ? Charset.defaultCharset() : Charset.forName(charsetName);
     }
 
+    /**
+     * Expected arguments:
+     * <ol>
+     * <li>groupId: Maven group id</li>
+     * <li>artifactId: Maven artifact id</li>
+     * <li>propertiesFile: Properties file containing further configuration properties.</li>
+     * <li>writeVersionsFile: optional. If provided, the versions are retrieved and written to disk. Leave it out, if you need to tweak the versions
+     * manually.
+     * </ol>
+     *
+     * Specify the activationCode as VM property: -Dsonargraph.activationCode=XXXX-XXXX-XXXX-XXXX
+     */
     public static void main(final String[] args)
     {
-        final String propertyFileName = args.length > 0 ? args[0] : null;
+        if (args.length < 3)
+        {
+            throw new IllegalArgumentException("Expected arguments: <groupId> <artifactId> <propertiesFilePath> [writeVersionsFile]");
+        }
+
+        final String groupId = args[0];
+        final String artifactId = args[1];
+        final String propertyFileName = args[2];
+        final boolean writeVersionsFile = args.length > 3 && args[3].equals("writeVersionsFile");
+
         final Configuration props = ConfigurationReader.read(propertyFileName);
         if (props != null)
         {
-            final HibernateCoreAnalysis execution = new HibernateCoreAnalysis(props);
+            final RunAnalysisForMavenBundle execution = new RunAnalysisForMavenBundle(groupId, artifactId, props, writeVersionsFile);
             try
             {
                 execution.run();
@@ -89,46 +121,55 @@ public final class HibernateCoreAnalysis
         }
     }
 
+    /**
+     * Executes the analysis:
+     * <ol>
+     * <li>Does first some setup work like retrieving the available versions, setting up the sample directory, copying the default Sonargraph system
+     * and change its id.</li>
+     * <li>For each version, download jar + sources.jar and execute Sonargraph-Build.</li>
+     * </ol>
+     *
+     * @throws IOException
+     */
     private void run() throws IOException
     {
         final IShell shell = ShellFactory.create(m_charset);
-        final String analysisPath = m_configuration.getString(Props.ANALYSIS_DIRECTORY.getPropertyName());
-        if (analysisPath == null || analysisPath.trim().isEmpty())
+        final String basePath = m_configuration.getString(Props.BASE_DIRECTORY.getPropertyName());
+        if (basePath == null || basePath.trim().isEmpty())
         {
-            throw new RuntimeException("Missing configuration for '" + Props.ANALYSIS_DIRECTORY.getPropertyName() + "'");
+            throw new RuntimeException("Missing configuration for '" + Props.BASE_DIRECTORY.getPropertyName() + "'");
         }
-        final File analysisDirectory = new File(analysisPath);
-        if (!analysisDirectory.exists() || !analysisDirectory.isDirectory())
+        final File baseDir = new File(basePath);
+        if (!baseDir.exists() || !baseDir.isDirectory())
         {
-            analysisDirectory.mkdirs();
+            baseDir.mkdirs();
         }
 
-        final List<Pair<String, Date>> versionsAndDates = processVersions(shell, analysisDirectory);
+        final File projectDir = new File(baseDir, m_artifactId);
+        if (!projectDir.exists() || !projectDir.isDirectory())
+        {
+            projectDir.mkdirs();
+        }
+
+        final List<Pair<String, Date>> versionsAndDates = processVersions(shell, projectDir);
         LOGGER.info("Processing {} versions", versionsAndDates.size());
         LOGGER.debug("Versions: \n{}", versionsAndDates.stream().map(v -> v.getLeft()).collect(Collectors.joining("\n")));
 
-        final File samplesDirectory = new File(analysisDirectory, "sample_projects");
-        if (!samplesDirectory.exists() || !samplesDirectory.isDirectory())
+        final File samplesProjectsDirectory = new File(projectDir, "sampleProjects");
+        if (!samplesProjectsDirectory.exists() || !samplesProjectsDirectory.isDirectory())
         {
-            samplesDirectory.mkdir();
+            samplesProjectsDirectory.mkdir();
         }
 
-        final File sample = new File(analysisDirectory, "sample");
-
-        final String group = m_configuration.getString(Props.MAVEN_GROUP_ID.getPropertyName());
-        final String artifactId = m_configuration.getString(Props.MAVEN_ARTIFACT_ID.getPropertyName());
-        final String mavenRepoHome = m_configuration.getString(Props.MAVEN_REPO_HOME.getPropertyName());
-        if (mavenRepoHome == null)
+        final File sample = new File(projectDir, "sample");
+        if (!sample.exists() || !sample.isDirectory())
         {
-            throw new RuntimeException("Missing configuration property '" + Props.MAVEN_REPO_HOME.getPropertyName() + "'");
+            sample.mkdir();
         }
-        final File directoryInMavenHome = getArtifactDirectory(mavenRepoHome, group, artifactId);
 
-        final String sonargraphSystemPath = m_configuration.getString(Props.SONARGRAPH_SYSTEM_DIRECTORY.getPropertyName());
-        if (sonargraphSystemPath == null)
-        {
-            throw new RuntimeException("Missing configuration property '" + Props.SONARGRAPH_SYSTEM_DIRECTORY.getPropertyName() + "'");
-        }
+        final File sourceDirectory = new File("./src/test/sample");
+        copyDirectory(sourceDirectory.getAbsolutePath(), sample.getAbsolutePath());
+        final String sonargraphSystemPath = adjustSample(sample, m_groupId, m_artifactId);
 
         final File sonargraphSystemDir = new File(sonargraphSystemPath);
         if (!sonargraphSystemDir.exists() || !sonargraphSystemDir.isDirectory())
@@ -136,15 +177,10 @@ public final class HibernateCoreAnalysis
             throw new RuntimeException("Not a Sonargraph system directory: " + sonargraphSystemDir.getAbsolutePath());
         }
 
-        final String startupXmlPath = m_configuration.getString(Props.CONFIG_FILE.getPropertyName());
-        if (startupXmlPath == null)
-        {
-            throw new RuntimeException("Missing configuration property '" + Props.CONFIG_FILE.getPropertyName() + "'");
-        }
-        final File startupXml = new File(startupXmlPath);
+        final File startupXml = new File(sample, "startup.xml");
         if (!startupXml.exists())
         {
-            throw new RuntimeException("startup.xml does not exist at: " + startupXmlPath);
+            throw new RuntimeException("startup.xml does not exist at: " + startupXml.getAbsolutePath());
         }
 
         String baselineReportPath = "";
@@ -156,65 +192,35 @@ public final class HibernateCoreAnalysis
             final Date date = next.getRight();
 
             //create directory matching version
-            final File projectDir = new File(samplesDirectory, version);
-            if (!projectDir.exists())
+            final File projectVersionDir = new File(samplesProjectsDirectory, version);
+            if (!projectVersionDir.exists())
             {
-                projectDir.mkdir();
-            }
-
-            //copy sample pom.xml
-            final File sourcePom = new File(sample, "pom.xml");
-            final File targetPom = new File(projectDir, "pom.xml");
-            copyToDir(sourcePom, projectDir);
-
-            //replace version
-            if (!replaceLineInFile(targetPom, "<hibernate.version>5.5.2.Final</hibernate.version>",
-                    "<hibernate.version>" + version + "</hibernate.version>"))
-            {
-                LOGGER.error("Failed to replace version information in file {}", targetPom);
-                continue;
+                projectVersionDir.mkdir();
             }
 
             try
             {
-                MavenCommands.executeMvn(shell, projectDir, null, "mvn compile dependency:sources");
+                downloadJarsFromMavenCentral(projectVersionDir, version);
             }
-            catch (final Exception e)
+            catch (final IOException ex)
             {
-                LOGGER.error("Failed to execute Maven for version '" + version + "'", e);
+                LOGGER.error("Failed to download files for version " + version, ex);
                 continue;
             }
-
-            final File versionDirInJavaHome = new File(directoryInMavenHome, version);
-            if (!versionDirInJavaHome.exists() || !versionDirInJavaHome.isDirectory())
-            {
-                LOGGER.error("Missing directory in Maven home for version '{}'", version);
-                continue;
-            }
-
-            //copy jar and sources-jar from maven repo to sample directory and rename them to default
-            final File jar = new File(versionDirInJavaHome, artifactId + "-" + version + ".jar");
-            final File targetJar = new File(projectDir, artifactId + ".jar");
-            copyToFile(jar, targetJar);
-            final File sourcesJar = new File(versionDirInJavaHome, artifactId + "-" + version + "-sources.jar");
-            final File targetSourcesJar = new File(projectDir, artifactId + "-sources.jar");
-            copyToFile(sourcesJar, targetSourcesJar);
 
             //copy Sonargraph system to sample directory
-            final File systemDirectory = new File(projectDir, sonargraphSystemDir.getName());
+            final File systemDirectory = new File(projectVersionDir, sonargraphSystemDir.getName());
             systemDirectory.mkdir();
             final File sonargraphFile = new File(sonargraphSystemDir, "system.sonargraph");
             copyToDir(sonargraphFile, systemDirectory);
 
-            //copy startup config
-            copyToDir(startupXml, projectDir);
-            final File targetStartupXml = new File(projectDir, startupXml.getName());
+            copyToDir(startupXml, projectVersionDir);
+            final File targetStartupXml = new File(projectVersionDir, startupXml.getName());
 
             final Pair<String, String> timestamps = createTimestamps(date);
-            //execute Sonargraph
             try
             {
-                baselineReportPath = SonargraphCommand.createReport(shell, timestamps.getLeft(), timestamps, version, analysisDirectory,
+                baselineReportPath = SonargraphCommand.createReport(shell, m_artifactId, timestamps.getLeft(), timestamps, version, projectDir,
                         baselineReportPath, m_configuration, targetStartupXml.getAbsolutePath(), systemDirectory.getAbsolutePath());
             }
             catch (final Exception e)
@@ -222,7 +228,74 @@ public final class HibernateCoreAnalysis
                 LOGGER.error("Failed to execute Sonargraph for version " + version, e);
             }
         }
+    }
 
+    private void downloadJarsFromMavenCentral(final File projectVersionDir, final String version) throws IOException
+    {
+        assert projectVersionDir != null : "Parameter 'projectVersionDir' of method 'downloadJarsFromMavenCentral' must not be null";
+        assert version != null && version.length() > 0 : "Parameter 'version' of method 'downloadJarsFromMavenCentral' must not be empty";
+
+        final String repoUrl = m_configuration.getString(Props.MAVEN_REPO_URL.getPropertyName());
+        if (repoUrl == null)
+        {
+            throw new RuntimeException("Missing configuration property '" + Props.MAVEN_REPO_URL.getPropertyName() + "'");
+        }
+
+        final StringBuilder url = new StringBuilder(repoUrl);
+        url.append(m_groupId.replace(".", "/")).append("/");
+        url.append(m_artifactId).append("/");
+        url.append(version);
+
+        url.append("/").append(m_artifactId).append("-").append(version);
+
+        downloadFile(url.toString() + ".jar", new File(projectVersionDir, "classes.jar"));
+        downloadFile(url.toString() + "-sources.jar", new File(projectVersionDir, "sources.jar"));
+    }
+
+    private void downloadFile(final String url, final File targetFile) throws IOException
+    {
+        try (final InputStream in = new URL(url).openStream();)
+        {
+            Files.copy(in, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            LOGGER.info("Successfully downloaded {}", url);
+        }
+    }
+
+    private String adjustSample(final File sampleDir, final String groupId, final String artifactId) throws IOException
+    {
+        assert sampleDir != null : "Parameter 'sampleDir' of method 'adjustSample' must not be null";
+        assert groupId != null : "Parameter 'groupId' of method 'adjustSample' must not be null";
+        assert artifactId != null : "Parameter 'artifactId' of method 'adjustSample' must not be null";
+
+        final String samplePath = sampleDir.getAbsolutePath();
+        final Path sonargraphDir = Paths.get(samplePath, artifactId + ".sonargraph");
+        if (!sonargraphDir.toFile().exists())
+        {
+            Files.move(Paths.get(samplePath, "Sonargraph-System.sonargraph"), sonargraphDir, StandardCopyOption.REPLACE_EXISTING);
+        }
+        final File sonargraphSystemFile = new File(sonargraphDir.toFile(), "system.sonargraph");
+        replaceLineInFile(sonargraphSystemFile, "id=\"XXXX\"", "id=\"" + groupId + "." + artifactId + "\"");
+
+        return sonargraphDir.toAbsolutePath().toString();
+    }
+
+    private static void copyDirectory(final String sourceDirectoryLocation, final String destinationDirectoryLocation) throws IOException
+    {
+        Files.walk(Paths.get(sourceDirectoryLocation)).forEach(source ->
+        {
+            final Path destination = Paths.get(destinationDirectoryLocation, source.toString().substring(sourceDirectoryLocation.length()));
+            if (!destination.toFile().exists())
+            {
+                try
+                {
+                    Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
+                }
+                catch (final IOException e)
+                {
+                    LOGGER.error("Failed to copy", e);
+                }
+            }
+        });
     }
 
     private List<Pair<String, Date>> processVersions(final IShell shell, final File analysisDirectory)
@@ -232,14 +305,17 @@ public final class HibernateCoreAnalysis
 
         final Path versionsFile = Paths.get(analysisDirectory.getAbsolutePath(), "versionsAndTimes.txt");
         final List<Pair<String, Date>> versionsAndDates;
-        if (m_configuration.getBoolean(Props.WRITE_TAGS_FILE.getPropertyName(), true))
+        if (m_writeVersionsFile || m_configuration.getBoolean(Props.WRITE_TAGS_FILE.getPropertyName(), false))
         {
             try
             {
-                final String versionUrl = m_configuration.getString(Props.MAVEN_VERSIONS_URL.getPropertyName());
+                final StringBuilder versionUrl = new StringBuilder(m_configuration.getString(Props.MAVEN_REPO_URL.getPropertyName()));
+                versionUrl.append(m_groupId.replaceAll("\\.", "/"));
+                versionUrl.append("/").append(m_artifactId).append("/");
+
                 final List<String> excludedVersionParts = m_configuration.getList(String.class, Props.EXCLUDED_TAG_PARTS.getPropertyName());
                 final Set<String> excludedTagParts = new HashSet<>(excludedVersionParts);
-                versionsAndDates = MavenRepo.getVersions(shell, versionUrl, excludedTagParts);
+                versionsAndDates = MavenRepo.getVersions(shell, versionUrl.toString(), excludedTagParts);
             }
             catch (final Exception e)
             {
@@ -296,14 +372,6 @@ public final class HibernateCoreAnalysis
         return new ImmutablePair<>(fileTimestamp, timestamp);
     }
 
-    private void copyToFile(final File source, final File target) throws IOException
-    {
-        assert source != null : "Parameter 'source' of method 'copyToFile' must not be null";
-        assert target != null : "Parameter 'target' of method 'copyToFile' must not be null";
-
-        Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-    }
-
     private void copyToDir(final File source, final File targetDir) throws IOException
     {
         assert source != null : "Parameter 'source' of method 'copyToDir' must not be null";
@@ -311,19 +379,6 @@ public final class HibernateCoreAnalysis
 
         final File target = new File(targetDir, source.getName());
         Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-    }
-
-    private File getArtifactDirectory(final String mavenHome, final String group, final String artifactId)
-    {
-        //C:\Users\Ingmar\.m2\repository\org\hibernate\hibernate-core\5.5.2.Final
-        final List<String> parts = new ArrayList<>();
-        parts.add("repository");
-        for (final String next : group.split("\\."))
-        {
-            parts.add(next);
-        }
-        parts.add(artifactId);
-        return Paths.get(mavenHome, parts.toArray(new String[] {})).toFile();
     }
 
     private boolean replaceLineInFile(final File targetPom, final String search, final String replace) throws IOException

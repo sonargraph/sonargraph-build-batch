@@ -19,7 +19,10 @@ package com.hello2morrow.sonargraph.batch.configuration;
 
 public enum Props
 {
+    BASE_DIRECTORY("baseDirectory"),
+
     NAME("name"),
+
     SONARGRAPH_SYSTEM_DIRECTORY("sonargraphSystemDirectory"),
     SHELL_CHARSET("shellCharset"),
     REPO_DIRECTORY("repoDirectory"),
@@ -36,8 +39,11 @@ public enum Props
     WRITE_TAGS_FILE("writeTagsFile"),
     JAVA_HOME_FOR_MVN("javaHomeForMvn"),
 
-    MAVEN_REPO_HOME("mavenRepoHome"),
+    MAVEN_LOCAL_REPO_HOME("mavenRepoHome"),
+    @Deprecated
     MAVEN_VERSIONS_URL("mavenVersionsUrl"),
+
+    MAVEN_REPO_URL("mavenRepoUrl"),
     MAVEN_GROUP_ID("mavenGroupId"),
     MAVEN_ARTIFACT_ID("mavenArtifactId"),
 

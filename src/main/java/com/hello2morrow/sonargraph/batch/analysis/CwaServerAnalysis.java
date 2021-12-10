@@ -46,8 +46,8 @@ import com.hello2morrow.sonargraph.batch.shell.ShellFactory;
 /**
  * This class executes the analysis for the German Corona-Warn-App server, available at https://github.com/corona-warn-app/cwa-server.
  *
- * It checks out the Git repo, pulls the latest changes and extracts the existing tagged commits. <br/>
- * For each tag, the commit is checked out, Maven is called to compile the code and SonargraphBuild is started. <br/>
+ * It checks out the Git repo, pulls the latest changes and extracts the existing tagged commits. <br>
+ * For each tag, the commit is checked out, Maven is called to compile the code and SonargraphBuild is started. <br>
  * The XML report and snapshot is pushed to a local Sonargraph-Enterprise server.
  */
 public class CwaServerAnalysis
@@ -240,7 +240,8 @@ public class CwaServerAnalysis
         final String config = new File(m_configuration.getString(Props.CONFIG_FILE.getPropertyName())).getAbsolutePath();
         final String systemDirectory = new File(m_configuration.getString(Props.SONARGRAPH_SYSTEM_DIRECTORY.getPropertyName())).getAbsolutePath();
 
-        return SonargraphCommand.createReport(shell, commit, timestamps, tag, analysisDir, baselineReportPath, m_configuration, config,
+        final String systemName = m_configuration.getString(Props.NAME.getPropertyName());
+        return SonargraphCommand.createReport(shell, systemName, commit, timestamps, tag, analysisDir, baselineReportPath, m_configuration, config,
                 systemDirectory);
     }
 }
