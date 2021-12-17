@@ -109,13 +109,14 @@ public class CwaServerAnalysis
             commitsAndTags = GitCommands.createListOfTags(shell, repoDir, commitsAndTagsFile, excludedTagParts);
             if (commitsAndTags == null)
             {
-                throw new RuntimeException("Failed to create list of commits and tags");
+                throw new RuntimeException("Failed to create list of commits and tags for repository at: " + repoPath);
             }
             else if (commitsAndTags.isEmpty())
             {
-                throw new RuntimeException("No tags found");
+                throw new RuntimeException("No tags found for repository at: " + repoPath);
             }
-            LOGGER.info("{} commits with tags written to file {}", commitsAndTags.size(), commitsAndTagsFile.getAbsolutePath());
+            LOGGER.info("{} commits with tags for repo '" + repoPath + "' written to file {}", commitsAndTags.size(),
+                    commitsAndTagsFile.getAbsolutePath());
         }
         else
         {
@@ -135,7 +136,7 @@ public class CwaServerAnalysis
             }
             catch (final IOException ex)
             {
-                LOGGER.error("Failed to read commits and tags from file");
+                LOGGER.error("Failed to read commits and tags from file for repo: " + repoPath);
                 throw new RuntimeException(ex);
             }
         }
