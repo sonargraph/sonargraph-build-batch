@@ -58,7 +58,7 @@ import com.hello2morrow.sonargraph.batch.shell.ShellFactory;
  */
 public final class AnalyzeMavenArtifact
 {
-    private static final Logger LOGGER = LoggerFactory.getLogger(RunAnalysisForMavenBundle.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AnalyzeMavenArtifact.class);
 
     private static final String LAST_VERSION_ANALYZED_FILE_NAME = "lastVersionAnalyzed.txt";
     private static final String VERSION_TIME_SEPARATOR = " -- ";
@@ -71,9 +71,8 @@ public final class AnalyzeMavenArtifact
     private final boolean m_writeVersionsFile;
     private final int m_versionsToAnalyze;
 
-
-    private AnalyzeMavenArtifact(final String groupId, final String artifactId, final Configuration configuration,
-            final boolean writeVersionsFile , final int versionsToAnalyze)
+    private AnalyzeMavenArtifact(final String groupId, final String artifactId, final Configuration configuration, final boolean writeVersionsFile,
+            final int versionsToAnalyze)
     {
         assert groupId != null && groupId.length() > 0 : "Parameter 'groupId' of method 'RunAnalysisForMavenBundle' must not be empty";
         assert artifactId != null && artifactId.length() > 0 : "Parameter 'artifactId' of method 'RunAnalysisForMavenBundle' must not be empty";
@@ -147,6 +146,7 @@ public final class AnalyzeMavenArtifact
      */
     private void run() throws IOException
     {
+        final long overallStart = System.currentTimeMillis();
         final IShell shell = ShellFactory.create(m_charset);
         final String basePath = m_configuration.getString(Props.BASE_DIRECTORY.getPropertyName());
         if (basePath == null || basePath.trim().isEmpty())
@@ -167,6 +167,12 @@ public final class AnalyzeMavenArtifact
 
         final Pair<Version, Date> lastAnalyzedVersion = determineLastAnalyzedVersion(projectDir);
         final List<Pair<Version, Date>> versionsAndDates = processVersions(shell, projectDir, lastAnalyzedVersion, m_versionsToAnalyze);
+        if (versionsAndDates.size() == 0)
+        {
+            LOGGER.info("Nothing to do. Last analyzed version '{}' is the most recent one for {}.", lastAnalyzedVersion.getLeft().toString(),
+                    m_artifactId);
+            return;
+        }
         LOGGER.info("Processing {} versions", versionsAndDates.size());
         LOGGER.debug("Versions: \n{}", versionsAndDates.stream().map(v -> v.getLeft().toString()).collect(Collectors.joining("\n")));
 
@@ -202,7 +208,8 @@ public final class AnalyzeMavenArtifact
         int i = 1;
         for (final Pair<Version, Date> next : versionsAndDates)
         {
-            LOGGER.info("\n ---- Processing {} of {} ---", i++, versionsAndDates.size());
+            final long start = System.currentTimeMillis();
+            LOGGER.info("\n ---- Processing {} of {} ---", i, versionsAndDates.size());
             final String version = next.getLeft().toString();
             final Date date = next.getRight();
 
@@ -243,7 +250,10 @@ public final class AnalyzeMavenArtifact
             {
                 LOGGER.error("Failed to execute Sonargraph for version " + version, e);
             }
+
+            LOGGER.info("Finished processing {} of {} in {} ms", i++, versionsAndDates.size(), System.currentTimeMillis() - start);
         }
+        LOGGER.info("\n----- Finished analysis after {} seconds", Math.round(System.currentTimeMillis() - overallStart) / 1000.0);
     }
 
     private Pair<Version, Date> determineLastAnalyzedVersion(final File projectDir)
