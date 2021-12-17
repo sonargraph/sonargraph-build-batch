@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.hello2morrow</groupId>
     <artifactId>sonargraph-build-batch</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <name>Sonargraph-Build Batch</name>
     <description>Code to execute Sonargraph-Build for advanced analysis</description>
     <url>http://www.hello2morrow.com</url>
