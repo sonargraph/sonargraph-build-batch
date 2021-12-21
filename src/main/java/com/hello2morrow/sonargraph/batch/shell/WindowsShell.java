@@ -18,6 +18,8 @@
 package com.hello2morrow.sonargraph.batch.shell;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 
 final class WindowsShell extends AbstractShell implements IShell
 {
@@ -27,8 +29,14 @@ final class WindowsShell extends AbstractShell implements IShell
     }
 
     @Override
-    protected String createCommand(final String cmd)
+    protected List<String> createCommand(final List<String> cmd)
     {
-        return "cmd.exe /c " + cmd;
+        assert cmd != null : "Parameter 'cmd' of method 'createCommand' must not be null";
+
+        final List<String> result = new ArrayList<>(cmd.size() + 2);
+        result.add("cmd.exe");
+        result.add("/c");
+        result.addAll(cmd);
+        return result;
     }
 }

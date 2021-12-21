@@ -68,19 +68,23 @@ public final class AnalyzeMavenArtifact
     private final String m_artifactId;
     private final String m_groupId;
     private final Configuration m_configuration;
-    private final boolean m_writeVersionsFile;
+    private final String m_activationCode;
+    private boolean m_writeVersionsFile = true;
     private final int m_versionsToAnalyze;
 
-    private AnalyzeMavenArtifact(final String groupId, final String artifactId, final Configuration configuration, final boolean writeVersionsFile,
-            final int versionsToAnalyze)
+    private AnalyzeMavenArtifact(final String groupId, final String artifactId, final Configuration configuration, final String activationCode,
+            final boolean writeVersionsFile, final int versionsToAnalyze)
     {
         assert groupId != null && groupId.length() > 0 : "Parameter 'groupId' of method 'RunAnalysisForMavenBundle' must not be empty";
         assert artifactId != null && artifactId.length() > 0 : "Parameter 'artifactId' of method 'RunAnalysisForMavenBundle' must not be empty";
         assert configuration != null : "Parameter 'configuration' of method 'Execution' must not be null";
+        assert activationCode != null
+                && activationCode.length() > 0 : "Parameter 'activationCode' of method 'AnalyzeMavenArtifact' must not be empty";
 
         m_groupId = groupId;
         m_artifactId = artifactId;
         m_configuration = configuration;
+        m_activationCode = activationCode;
         m_writeVersionsFile = writeVersionsFile;
         m_versionsToAnalyze = versionsToAnalyze;
 
@@ -94,6 +98,7 @@ public final class AnalyzeMavenArtifact
      * <li>groupId: Maven group id</li>
      * <li>artifactId: Maven artifact id</li>
      * <li>propertiesFile: Properties file containing further configuration properties.</li>
+     * <li>activationCode: Activation code for Sonargraph-Build
      * <li>writeVersionsFile (optional): If provided, the versions are retrieved and written to disk. Leave it out, if you need to tweak the versions
      * manually.
      * </ol>
@@ -103,35 +108,44 @@ public final class AnalyzeMavenArtifact
      */
     public static void main(final String[] args)
     {
-        if (args.length < 3)
+        if (args.length < 4)
         {
             throw new IllegalArgumentException(
-                    "Expected arguments: groupId=<groupId> artifactId=<artifactId> propertiesFilePath=<propertiesFilePath> [writeVersionsFile=<true|false>] [numberOfMostRecentVersions=<n>]");
+                    "Expected arguments: groupId=<groupId> artifactId=<artifactId> propertiesFilePath=<propertiesFilePath> activationCode=<activation-code> [writeVersionsFile=<true|false>] [numberOfMostRecentVersions=<n>]");
         }
 
-        final Map<MavenCommandlineArgument, String> argsMap = MavenCommandlineArgument.parseArgs(args);
+        final long overallStart = System.currentTimeMillis();
 
+        final Map<MavenCommandlineArgument, String> argsMap = MavenCommandlineArgument.parseArgs(args);
         final String groupId = MavenCommandlineArgument.getArgument(argsMap, MavenCommandlineArgument.GROUP_ID);
         final String artifactId = MavenCommandlineArgument.getArgument(argsMap, MavenCommandlineArgument.ARTIFACT_ID);
         final String propertyFileName = MavenCommandlineArgument.getArgument(argsMap, MavenCommandlineArgument.PROPERTY_FILE_NAME);
+        final String activationCode = MavenCommandlineArgument.getArgument(argsMap, MavenCommandlineArgument.ACTIVATIONCODE);
         final boolean writeVersionsFile = Boolean
-                .parseBoolean(MavenCommandlineArgument.getArgument(argsMap, MavenCommandlineArgument.PROPERTY_FILE_NAME));
+                .parseBoolean(MavenCommandlineArgument.getArgument(argsMap, MavenCommandlineArgument.WRITE_VERSIONS_FILE));
         final int versionsToAnalyze = Integer
                 .parseInt(MavenCommandlineArgument.getArgument(argsMap, MavenCommandlineArgument.NUMBER_OF_MOST_RECENT_VERSIONS));
 
         final Configuration props = ConfigurationReader.read(propertyFileName);
-        if (props != null)
+        if (props == null)
         {
-            final AnalyzeMavenArtifact execution = new AnalyzeMavenArtifact(groupId, artifactId, props, writeVersionsFile, versionsToAnalyze);
-            try
-            {
-                execution.run();
-            }
-            catch (final IOException e)
-            {
-                e.printStackTrace();
-            }
+            LOGGER.error("Failed to load configuration properties file from " + propertyFileName);
+            System.exit(-1);
         }
+
+        try
+        {
+            final AnalyzeMavenArtifact execution = new AnalyzeMavenArtifact(groupId, artifactId, props, activationCode, writeVersionsFile,
+                    versionsToAnalyze);
+            execution.run();
+        }
+        catch (final IOException e)
+        {
+            e.printStackTrace();
+            System.exit(-1);
+        }
+        LOGGER.info("\n----- Finished analysis after {} seconds", Math.round(System.currentTimeMillis() - overallStart) / 1000.0);
+
     }
 
     /**
@@ -146,7 +160,6 @@ public final class AnalyzeMavenArtifact
      */
     private void run() throws IOException
     {
-        final long overallStart = System.currentTimeMillis();
         final IShell shell = ShellFactory.create(m_charset);
         final String basePath = m_configuration.getString(Props.BASE_DIRECTORY.getPropertyName());
         if (basePath == null || basePath.trim().isEmpty())
@@ -169,8 +182,15 @@ public final class AnalyzeMavenArtifact
         final List<Pair<Version, Date>> versionsAndDates = processVersions(shell, projectDir, lastAnalyzedVersion, m_versionsToAnalyze);
         if (versionsAndDates.size() == 0)
         {
-            LOGGER.info("Nothing to do. Last analyzed version '{}' is the most recent one for {}.", lastAnalyzedVersion.getLeft().toString(),
-                    m_artifactId);
+            if (lastAnalyzedVersion != null)
+            {
+                LOGGER.info("Nothing to do. Last analyzed version '{}' is the most recent one for {}.", lastAnalyzedVersion.getLeft().toString(),
+                        m_artifactId);
+            }
+            else
+            {
+                LOGGER.info("Nothing to do. No versions found for {}.", m_artifactId);
+            }
             return;
         }
         LOGGER.info("Processing {} versions", versionsAndDates.size());
@@ -188,6 +208,8 @@ public final class AnalyzeMavenArtifact
             sample.mkdir();
         }
 
+        //FIXME [IK] The sample system and all the necessary files should be loaded from the classpath, so that the analysis can be more easily
+        //setup on a build server.
         final File sourceDirectory = new File("./src/test/sample");
         copyDirectory(sourceDirectory.getAbsolutePath(), sample.getAbsolutePath());
         final String sonargraphSystemPath = adjustSample(sample, m_groupId, m_artifactId);
@@ -243,7 +265,7 @@ public final class AnalyzeMavenArtifact
             try
             {
                 baselineReportPath = SonargraphCommand.createReport(shell, m_artifactId, timestamps.getLeft(), timestamps, version, projectDir,
-                        baselineReportPath, m_configuration, targetStartupXml.getAbsolutePath(), systemDirectory.getAbsolutePath());
+                        baselineReportPath, m_activationCode, m_configuration, targetStartupXml.getAbsolutePath(), systemDirectory.getAbsolutePath());
                 Files.writeString(new File(projectDir, LAST_VERSION_ANALYZED_FILE_NAME).toPath(), createVersionAndDateLine(next));
             }
             catch (final Exception e)
@@ -253,7 +275,6 @@ public final class AnalyzeMavenArtifact
 
             LOGGER.info("Finished processing {} of {} in {} ms", i++, versionsAndDates.size(), System.currentTimeMillis() - start);
         }
-        LOGGER.info("\n----- Finished analysis after {} seconds", Math.round(System.currentTimeMillis() - overallStart) / 1000.0);
     }
 
     private Pair<Version, Date> determineLastAnalyzedVersion(final File projectDir)
@@ -381,6 +402,7 @@ public final class AnalyzeMavenArtifact
                     lines.add(createVersionAndDateLine(next));
                 }
                 Files.write(versionsFile, lines);
+                LOGGER.debug("Versions written to {}", versionsFile.toString());
             }
             catch (final IOException ex)
             {
@@ -389,17 +411,24 @@ public final class AnalyzeMavenArtifact
         }
         else
         {
-            try
+            versionsAndDates = new ArrayList<>();
+            if (versionsFile.toFile().exists())
             {
-                versionsAndDates = new ArrayList<>();
-                for (final String next : Files.readAllLines(versionsFile))
+                try
                 {
-                    versionsAndDates.add(extractVersionAndDateFromLine(next));
+                    for (final String next : Files.readAllLines(versionsFile))
+                    {
+                        versionsAndDates.add(extractVersionAndDateFromLine(next));
+                    }
+                }
+                catch (final IOException ex)
+                {
+                    throw new RuntimeException("Failed to read versions file", ex);
                 }
             }
-            catch (final IOException ex)
+            else
             {
-                throw new RuntimeException("Failed to read versions file", ex);
+                throw new RuntimeException("Expected file does not exist: " + versionsFile.toAbsolutePath());
             }
         }
 
@@ -470,15 +499,15 @@ public final class AnalyzeMavenArtifact
         Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
     }
 
-    private boolean replaceLineInFile(final File targetPom, final String search, final String replace) throws IOException
+    private boolean replaceLineInFile(final File file, final String search, final String replace) throws IOException
     {
-        assert targetPom != null : "Parameter 'targetPom' of method 'replaceLineInFile' must not be null";
+        assert file != null : "Parameter 'file' of method 'replaceLineInFile' must not be null";
         assert search != null && search.length() > 0 : "Parameter 'search' of method 'replaceLineInFile' must not be empty";
         assert replace != null && replace.length() > 0 : "Parameter 'replace' of method 'replaceLineInFile' must not be empty";
 
         boolean anyReplaced = false;
         final List<String> content = new ArrayList<>();
-        for (final String next : Files.readAllLines(targetPom.toPath()))
+        for (final String next : Files.readAllLines(file.toPath()))
         {
             final String replaced = next.replace(search, replace);
             if (!next.equals(replaced))
@@ -488,8 +517,7 @@ public final class AnalyzeMavenArtifact
             content.add(replaced);
         }
 
-        Files.write(targetPom.toPath(), content);
-
+        Files.write(file.toPath(), content);
         return anyReplaced;
     }
 }

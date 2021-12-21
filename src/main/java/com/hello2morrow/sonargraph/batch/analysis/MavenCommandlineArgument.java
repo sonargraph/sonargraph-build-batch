@@ -23,7 +23,8 @@ public enum MavenCommandlineArgument
                                    "Number of most recent versions to anaylze (-1 means all).",
                                    true,
                                    "-1",
-                                   Type.INTEGER);
+                                   Type.INTEGER),
+    ACTIVATIONCODE("activationCode", "Activation Code for SonargraphBuild", false);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MavenCommandlineArgument.class);
 
@@ -108,6 +109,10 @@ public enum MavenCommandlineArgument
         for (int i = 0; i < args.length; i++)
         {
             final String next = args[i];
+            if (next.startsWith("-D"))
+            {
+                continue;
+            }
             final String[] line = next.split("=");
             if (line.length != 2)
             {

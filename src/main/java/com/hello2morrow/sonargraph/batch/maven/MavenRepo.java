@@ -35,7 +35,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import com.hello2morrow.sonargraph.batch.configuration.Version;
 import com.hello2morrow.sonargraph.batch.shell.IShell;
 
-public class MavenRepo
+public final class MavenRepo
 {
     static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
@@ -43,6 +43,15 @@ public class MavenRepo
     //<a href="3.3.0.CR1/" title="3.3.0.CR1/">3.3.0.CR1/</a>                                        2008-09-26 20:39         -
     private static final Pattern PATTERN = Pattern.compile(".*title=\"(.*)\".*</a>[\\s]+(\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}).*");
 
+    /**
+     * Query the list of available versions for a Maven artifact as HTML from the given URL.
+     *
+     * @param shell
+     * @param url
+     * @param skipVersionParts
+     * @return
+     * @throws Exception
+     */
     public static List<Pair<Version, Date>> getVersions(final IShell shell, final String url, final Set<String> skipVersionParts) throws Exception
     {
         assert shell != null : "Parameter 'shell' of method 'getVersions' must not be null";

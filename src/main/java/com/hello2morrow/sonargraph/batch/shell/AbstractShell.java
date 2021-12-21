@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,25 +27,21 @@ abstract class AbstractShell implements IShell
     }
 
     @Override
-    public final List<String> execute(final String cmd, final File workingDirectory) throws Exception
+    public List<String> execute(final List<String> cmd, final File workingDirectory) throws Exception
     {
-        assert cmd != null && !cmd.isEmpty() : "Parameter 'cmd' of method 'executeCommand' must not be empty";
-        assert workingDirectory != null : "Parameter 'workingDirectory' of method 'executeCommand' must not be null";
+        assert cmd != null : "Parameter 'cmd' of method 'execute' must not be null";
+        assert workingDirectory != null : "Parameter 'workingDirectory' of method 'execute' must not be null";
 
-        final List<String> output = new ArrayList<>();
-        final List<String> errors = new ArrayList<>();
+        final List<String> command = createCommand(cmd);
 
-        final String command = createCommand(cmd);
-
-        final ProcessBuilder builder = new ProcessBuilder(command.split(" "));
-
+        final ProcessBuilder builder = new ProcessBuilder(command);
         if (workingDirectory != null)
         {
             builder.directory(workingDirectory);
         }
 
         Process process = null;
-        LOGGER.info("Executing: {}", command);
+        LOGGER.info("Executing in {}: {}", workingDirectory.getAbsolutePath(), command.stream().collect(Collectors.joining(" ")));
         process = builder.start();
 
         final ProcessStream outputStream = new ProcessStream("STANDARD OUT", process.getInputStream(), m_charset);
@@ -59,6 +56,8 @@ abstract class AbstractShell implements IShell
 
         // now we maybe get the 'real' exit code, or not...
         final int exitValue = process.exitValue();
+        final List<String> output = new ArrayList<>();
+        final List<String> errors = new ArrayList<>();
         output.addAll(outputStream.getOutput());
         errors.addAll(errorStream.getOutput());
 
@@ -73,9 +72,19 @@ abstract class AbstractShell implements IShell
 
         LOGGER.debug("Output: {}", output.stream().collect(Collectors.joining("\n")));
         return output;
+
     }
 
-    protected String createCommand(final String cmd)
+    @Override
+    public final List<String> execute(final String cmd, final File workingDirectory) throws Exception
+    {
+        assert cmd != null && !cmd.isEmpty() : "Parameter 'cmd' of method 'executeCommand' must not be empty";
+        assert workingDirectory != null : "Parameter 'workingDirectory' of method 'executeCommand' must not be null";
+
+        return execute(Arrays.asList(cmd.split(" ")), workingDirectory);
+    }
+
+    protected List<String> createCommand(final List<String> cmd)
     {
         return cmd;
     }
