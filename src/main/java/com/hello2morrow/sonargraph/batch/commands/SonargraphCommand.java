@@ -22,6 +22,7 @@ import java.io.File;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.hello2morrow.sonargraph.batch.configuration.Platform;
 import com.hello2morrow.sonargraph.batch.configuration.Props;
 import com.hello2morrow.sonargraph.batch.shell.IShell;
 
@@ -33,8 +34,8 @@ public final class SonargraphCommand
     }
 
     public static String createReport(final IShell shell, final String systemName, final String commit, final Pair<String, String> timestamps,
-            final String tag, final File analysisDir, final String baselineReportPath, final Configuration configuration, final String configFile,
-            final String sonargraphSystemPath) throws Exception
+            final String tag, final File analysisDir, final String baselineReportPath, final String activationCode, final Configuration configuration,
+            final String configFile, final String sonargraphSystemPath) throws Exception
     {
         assert shell != null : "Parameter 'shell' of method 'executeSonargraph' must not be null";
         assert commit != null : "Parameter 'commit' of method 'executeSonargraph' must not be null";
@@ -42,13 +43,6 @@ public final class SonargraphCommand
         assert configuration != null : "Parameter 'configuration' of method 'createReport' must not be null";
         assert configFile != null : "Parameter 'configFile' of method 'createReport' must not be null";
         assert sonargraphSystemPath != null : "Parameter 'sonargraphSystemPath' of method 'createReport' must not be null";
-
-        final String activationCode = System.getProperty("sonargraph.activationCode");
-        if (activationCode == null)
-        {
-            throw new RuntimeException(
-                    "Missing Sonargraph activation code. Must be set as System property (-Dsonargraph.activationCode=xxxx-xxxx-xxxx-xxxx)!");
-        }
 
         final String instDirectory = configuration.getString(Props.INST_DIRECTORY.getPropertyName());
         final String buildClientJar = SonargraphInstallationUtility.getSonargraphBuildClientJar(new File(instDirectory)).getAbsolutePath();
@@ -70,8 +64,9 @@ public final class SonargraphCommand
 
         final String reportFileName = systemName + "-" + reportIdentifier;
 
+        final String classPathSeparator = Platform.isWindows() ? ";" : ":";
         final StringBuilder commandString = new StringBuilder();
-        commandString.append("java -ea -cp ").append(buildClientJar).append(";").append(osgiJar)
+        commandString.append("java -ea -cp ").append(buildClientJar).append(classPathSeparator).append(osgiJar)
                 .append(" com.hello2morrow.sonargraph.build.client.SonargraphBuildRunner ");
         commandString.append(configFile);
         commandString.append(" activationCode=").append(activationCode);

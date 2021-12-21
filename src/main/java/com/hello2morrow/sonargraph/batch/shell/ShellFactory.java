@@ -19,16 +19,17 @@ package com.hello2morrow.sonargraph.batch.shell;
 
 import java.nio.charset.Charset;
 
+import com.hello2morrow.sonargraph.batch.configuration.Platform;
+
 public final class ShellFactory
 {
     public static IShell create(final Charset charset)
     {
-        final String osName = System.getProperty("os.name", "unknown").trim().toLowerCase();
-        if (osName.indexOf("windows") >= 0)
+        if (Platform.isWindows())
         {
             return new WindowsShell(charset);
         }
 
-        throw new RuntimeException("Unsupported operating system " + osName);
+        return new UnixShell(charset);
     }
 }

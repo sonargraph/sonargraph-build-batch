@@ -30,6 +30,8 @@ public interface IShell
 
     List<String> execute(final String cmd, final File workingDirectory) throws Exception;
 
+    List<String> execute(final List<String> cmd, final File workingDirectory) throws Exception;
+
     OS getOs();
 
 }

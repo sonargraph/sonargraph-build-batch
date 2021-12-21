@@ -57,11 +57,15 @@ public class CwaServerAnalysis
     private final Configuration m_configuration;
     private final Charset m_charset;
 
-    private CwaServerAnalysis(final Configuration configuration)
+    private final String m_activationCode;
+
+    private CwaServerAnalysis(final Configuration configuration, final String activationCode)
     {
         assert configuration != null : "Parameter 'configuration' of method 'Execution' must not be null";
+        assert activationCode != null && activationCode.length() > 0 : "Parameter 'activationCode' of method 'CwaServerAnalysis' must not be empty";
 
         m_configuration = configuration;
+        m_activationCode = activationCode;
         final String charsetName = m_configuration.getString(Props.SHELL_CHARSET.getPropertyName());
         m_charset = charsetName == null ? Charset.defaultCharset() : Charset.forName(charsetName);
     }
@@ -69,10 +73,12 @@ public class CwaServerAnalysis
     public static void main(final String[] args)
     {
         final String propertyFileName = args.length > 0 ? args[0] : null;
+        //FIXME [IK] Should be solved like in the AnalyzeMavenArtifact class
+        final String activationCode = args[1];
         final Configuration props = ConfigurationReader.read(propertyFileName);
         if (props != null)
         {
-            final CwaServerAnalysis execution = new CwaServerAnalysis(props);
+            final CwaServerAnalysis execution = new CwaServerAnalysis(props, activationCode);
             execution.run();
         }
     }
@@ -109,13 +115,14 @@ public class CwaServerAnalysis
             commitsAndTags = GitCommands.createListOfTags(shell, repoDir, commitsAndTagsFile, excludedTagParts);
             if (commitsAndTags == null)
             {
-                throw new RuntimeException("Failed to create list of commits and tags");
+                throw new RuntimeException("Failed to create list of commits and tags for repository at: " + repoPath);
             }
             else if (commitsAndTags.isEmpty())
             {
-                throw new RuntimeException("No tags found");
+                throw new RuntimeException("No tags found for repository at: " + repoPath);
             }
-            LOGGER.info("{} commits with tags written to file {}", commitsAndTags.size(), commitsAndTagsFile.getAbsolutePath());
+            LOGGER.info("{} commits with tags for repo '" + repoPath + "' written to file {}", commitsAndTags.size(),
+                    commitsAndTagsFile.getAbsolutePath());
         }
         else
         {
@@ -135,7 +142,7 @@ public class CwaServerAnalysis
             }
             catch (final IOException ex)
             {
-                LOGGER.error("Failed to read commits and tags from file");
+                LOGGER.error("Failed to read commits and tags from file for repo: " + repoPath);
                 throw new RuntimeException(ex);
             }
         }
@@ -182,7 +189,12 @@ public class CwaServerAnalysis
         assert tag != null && tag.length() > 0 : "Parameter 'tag' of method 'logExceptionToFile' must not be empty";
         assert exception != null : "Parameter 'exception' of method 'logExceptionToFile' must not be null";
 
-        final File logFile = new File(analysisDir + "/logs", System.currentTimeMillis() + "_" + tag + "_" + commit + ".log");
+        final File logDir = new File(analysisDir + "/logs");
+        if (!logDir.exists())
+        {
+            logDir.mkdir();
+        }
+        final File logFile = new File(logDir, System.currentTimeMillis() + "_" + tag + "_" + commit + ".log");
         try (Writer writer = new FileWriter(logFile))
         {
             writer.append(exception.getMessage());
@@ -190,7 +202,7 @@ public class CwaServerAnalysis
         }
         catch (final IOException e)
         {
-            LOGGER.error("Failed to writer exception to log file", e);
+            LOGGER.error("Failed to write exception to log file", e);
             LOGGER.error("Exception that should have been logged: ", e);
         }
     }
@@ -241,7 +253,7 @@ public class CwaServerAnalysis
         final String systemDirectory = new File(m_configuration.getString(Props.SONARGRAPH_SYSTEM_DIRECTORY.getPropertyName())).getAbsolutePath();
 
         final String systemName = m_configuration.getString(Props.NAME.getPropertyName());
-        return SonargraphCommand.createReport(shell, systemName, commit, timestamps, tag, analysisDir, baselineReportPath, m_configuration, config,
-                systemDirectory);
+        return SonargraphCommand.createReport(shell, systemName, commit, timestamps, tag, analysisDir, baselineReportPath, m_activationCode,
+                m_configuration, config, systemDirectory);
     }
 }
