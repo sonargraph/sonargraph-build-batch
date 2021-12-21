@@ -38,7 +38,8 @@ Further information about Sonargraph:
 * [Sonargraph-Build User Manual](http://eclipse.hello2morrow.com/doc/build/content/index.html)
 
 ## Some Sample Results
-The results for some Maven artifacts are available on our public Sonargraph-Enterprise instance at [http://enterprise.hello2morrow.com:8080](http://enterprise.hello2morrow.com:8080). 
+The results for some Maven artifacts are available on our public Sonargraph-Enterprise instance at [http://enterprise.hello2morrow.com:8080](http://enterprise.hello2morrow.com:8080).
+Switch to profile 'Entanglement', select a system and switch to page 'Entanglement'. 
 
 The analysis of a series of versions has been implemented to investigate how coupling and cyclic dependencies evolve over time together
 with the size of the projects. The following are a screenshots of Sonargraph-Enterprise which has been configured to show metrics for the system's size 
