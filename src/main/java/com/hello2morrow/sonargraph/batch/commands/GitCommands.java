@@ -171,7 +171,7 @@ public final class GitCommands
         assert commit != null && commit.length() > 0 : "Parameter 'commit' of method 'getTimestampOfCommit' must not be empty";
         assert repoDir != null : "Parameter 'repoDir' of method 'getTimestampOfCommit' must not be null";
 
-        final List<String> lines1 = shell.execute("git log -1 --date=%Y-%m-%d_%H-%M-%S --pretty=%ad", repoDir);
+        final List<String> lines1 = shell.execute("git log -1 --date=format:'%Y-%m-%d_%H-%M-%S' --pretty=%ad", repoDir);
         final String fileNameTimestamp = lines1.get(0);
 
         final List<String> lines2 = shell.execute("git log -1 --format=%aI " + commit, repoDir);
